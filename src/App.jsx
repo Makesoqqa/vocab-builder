@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // API kaliti muhit tomonidan avtomatik taqdim etiladi
-const apiKey = "";
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 // --- SOUND ENGINE (Web Audio API) ---
 const playSound = (type) => {
