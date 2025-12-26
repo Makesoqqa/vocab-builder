@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 240 5% 96%;
+        /* #f5f6f7 -> HSL approx 240 5% 96% */
+        --foreground: 210 11% 15%;
+        /* #212529 */
+
+        --card: 0 0% 100%;
+        --card-foreground: 210 11% 15%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 210 11% 15%;
+
+        --primary: 210 11% 15%;
+        --primary-foreground: 240 5% 96%;
+
+        --secondary: 20 10% 92%;
+        /* #eeeae7 */
+        --secondary-foreground: 210 11% 15%;
+
+        --muted: 20 10% 92%;
+        --muted-foreground: 160 2% 59%;
+        /* #939896 */
+
+        --accent: 160 2% 59%;
+        --accent-foreground: 210 11% 15%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 20 10% 92%;
+        --input: 20 10% 92%;
+        --ring: 160 2% 59%;
+
+        --radius: 1rem;
+    }
+
+    .dark {
+        --background: 210 11% 15%;
+        --foreground: 240 5% 96%;
+
+        --card: 220 10% 20%;
+        /* #2a2e33 slightly lighter than bg */
+        --card-foreground: 240 5% 96%;
+
+        --popover: 210 11% 15%;
+        --popover-foreground: 240 5% 96%;
+
+        --primary: 240 5% 96%;
+        --primary-foreground: 210 11% 15%;
+
+        --secondary: 210 6% 24%;
+        /* #3a3d41 */
+        --secondary-foreground: 240 5% 96%;
+
+        --muted: 210 6% 24%;
+        --muted-foreground: 160 2% 59%;
+
+        --accent: 160 2% 59%;
+        --accent-foreground: 240 5% 96%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 210 6% 24%;
+        --input: 210 6% 24%;
+        --ring: 160 2% 59%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer utilities {
+    @keyframes wiggle {
+
+        0%,
+        100% {
+            transform: rotate(0deg) translateY(0);
+        }
+
+        25% {
+            transform: rotate(-5deg) translateY(-2px);
+        }
+
+        50% {
+            transform: rotate(5deg) translateY(0);
+        }
+
+        75% {
+            transform: rotate(-5deg) translateY(-2px);
+        }
+    }
+
+    @keyframes shake {
+
+        0%,
+        100% {
+            transform: translateX(0) rotate(0deg);
+        }
+
+        25% {
+            transform: translateX(-4px) rotate(-5deg);
+        }
+
+        50% {
+            transform: translateX(4px) rotate(5deg);
+        }
+
+        75% {
+            transform: translateX(-4px) rotate(-5deg);
+        }
+    }
+
+    .animate-wiggle {
+        animation: wiggle 0.5s ease-in-out;
+    }
+
+    .animate-shake {
+        animation: shake 0.5s ease-in-out;
+    }
+}

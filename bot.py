@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # IMPORTANT: Replace with your actual deployed URL (e.g., Vercel) or a local tunnel URL (ngrok)
     # Telegram requires HTTPS
-    web_app_url = "https://google.com" # Placeholder, change this after deployment
+    web_app_url = "https://vocab-builder-iota.vercel.app/" # Placeholder, change this after deployment
     
     keyboard = [
         [InlineKeyboardButton("Open App", web_app=WebAppInfo(url=web_app_url))]
