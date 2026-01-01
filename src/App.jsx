@@ -5,7 +5,7 @@ import {
     PenLine, Highlighter, Check, X, Trophy, User, Settings,
     BookOpen, Trash2, Sparkles, Loader2, Brain,
     RefreshCw, HelpCircle, Image as ImageIcon, Type, MousePointerClick,
-    Camera, Upload, FolderPlus, Play, Share2, Info, Target, ArrowLeft, Languages, WifiOff, Scan
+    Camera, Upload, FolderPlus, Play, Share2, Info, Target, ArrowLeft, ArrowRight, Volume2, Languages, WifiOff, Scan
 } from 'lucide-react';
 
 // --- Utility for Class Merging ---
@@ -47,7 +47,7 @@ const parseGeminiJSON = (text) => {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini API
-const API_KEY = "AIzaSyBLvrarI5U99NaLt90wireJpRSVR8mH7lA";
+const API_KEY = "AIzaSyCQPuhwX-Ki7Ax5g7FVqVB6zfKHnHLVgEw";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const mockAiService = async (prompt, imageBase64 = null) => {
@@ -85,41 +85,70 @@ const mockAiService = async (prompt, imageBase64 = null) => {
 
 
 // --- CSS & Animation Styles ---
-const GlobalStyles = () => (
-    <style>{`
-    :root {
-      --background: #f5f6f7; --foreground: #212529; --card: #ffffff; --card-foreground: #212529;
-      --popover: #ffffff; --popover-foreground: #212529; --primary: #212529; --primary-foreground: #f5f6f7;
-      --secondary: #eeeae7; --secondary-foreground: #212529; --muted: #eeeae7; --muted-foreground: #939896;
-      --accent: #939896; --accent-foreground: #212529; --destructive: #ef4444; --destructive-foreground: #f5f6f7;
-      --border: #eeeae7; --input: #eeeae7; --ring: #939896; --radius: 1rem;
-    }
-    .dark {
-      --background: #212529; --foreground: #f5f6f7; --card: #2a2e33; --card-foreground: #f5f6f7;
-      --popover: #2a2e33; --popover-foreground: #f5f6f7; --primary: #f5f6f7; --primary-foreground: #212529;
-      --secondary: #3a3d41; --secondary-foreground: #f5f6f7; --muted: #3a3d41; --muted-foreground: #939896;
-      --accent: #939896; --accent-foreground: #f5f6f7; --destructive: #7f1d1d; --destructive-foreground: #f5f6f7;
-      --border: #3a3d41; --input: #3a3d41; --ring: #939896;
-    }
-    .bg-background { background-color: var(--background); } .bg-card { background-color: var(--card); }
-    .bg-primary { background-color: var(--primary); } .bg-secondary { background-color: var(--secondary); }
-    .bg-muted { background-color: var(--muted); } .text-foreground { color: var(--foreground); }
-    .text-card-foreground { color: var(--card-foreground); } .text-primary-foreground { color: var(--primary-foreground); }
-    .text-secondary-foreground { color: var(--secondary-foreground); } .text-muted-foreground { color: var(--muted-foreground); }
-    .border-border { border-color: var(--border); } .border-input { border-color: var(--input); }
+const GlobalStyles = () => null;
 
-    @keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
-    @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-    @keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-    .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .animate-slide-up { animation: slide-up 0.4s ease-out; } .animate-fade-in { animation: fade-in 0.3s ease-out; }
-    .perspective-1000 { perspective: 1000px; } .transform-style-3d { transform-style: preserve-3d; }
-    .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-    body { font-family: 'Geist', sans-serif; -webkit-tap-highlight-color: transparent; }
-    .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  `}</style>
-);
+// --- Sound System ---
+const SoundContext = createContext();
+const SoundProvider = ({ children }) => {
+    const play = (type) => {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        if (type === 'click') {
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'success') {
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(554, now + 0.1); // C#
+            osc.frequency.setValueAtTime(659, now + 0.2); // E
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'swoosh') {
+            // White noise buffer
+            const bufferSize = ctx.sampleRate * 0.2;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseGain = ctx.createGain();
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noiseGain.gain.setValueAtTime(0.05, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            noise.start(now);
+        } else if (type === 'pop') {
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+    };
+    return <SoundContext.Provider value={play}>{children}</SoundContext.Provider>;
+};
+const useSound = () => useContext(SoundContext);
 
 // --- Toast System ---
 const ToastContext = createContext();
@@ -251,7 +280,9 @@ export const AppProvider = ({ children }) => {
 
     return (
         <AppContext.Provider value={{ user, setUser, collections, isDarkMode, toggleTheme, addCollection, addToCollection, removeCollection, addPoints, updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })), setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })), recentCollectionId, updateWordStatus, updateWordData }}>
-            {children}
+            <SoundProvider>
+                {children}
+            </SoundProvider>
         </AppContext.Provider>
     );
 };
@@ -281,10 +312,15 @@ const calculateNextReview = (word, grade) => {
 const useApp = () => useContext(AppContext);
 
 // --- UI Primitives ---
-const Button = ({ className, variant = "default", size = "default", isLoading, children, ...props }) => {
-    const variants = { default: "bg-primary text-primary-foreground", outline: "border border-input bg-background", ghost: "hover:bg-accent hover:text-accent-foreground", secondary: "bg-secondary text-secondary-foreground" };
+const Button = ({ className, variant = "default", size = "default", isLoading, children, onClick, ...props }) => {
+    const play = useSound();
+    const handleClick = (e) => {
+        if (play) play('click');
+        if (onClick) onClick(e);
+    };
+    const variants = { default: "bg-primary text-primary-foreground active:scale-95", outline: "border border-input bg-background active:scale-95", ghost: "hover:bg-accent hover:text-accent-foreground active:scale-95", secondary: "bg-secondary text-secondary-foreground active:scale-95" };
     const sizes = { default: "h-10 px-4 py-2", sm: "h-9 rounded-md px-3", icon: "h-10 w-10 p-0" };
-    return <button className={cn("inline-flex items-center justify-center rounded-2xl text-sm font-medium transition-colors disabled:opacity-50", variants[variant], sizes[size], className)} disabled={isLoading || props.disabled} {...props}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{children}</button>;
+    return <button className={cn("inline-flex items-center justify-center rounded-2xl text-sm font-medium transition-all duration-200 disabled:opacity-50", variants[variant], sizes[size], className)} disabled={isLoading || props.disabled} onClick={handleClick} {...props}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{children}</button>;
 };
 const Card = ({ className, ...props }) => <div className={cn("rounded-2xl border border-border bg-card text-card-foreground shadow-sm", className)} {...props} />;
 const Input = ({ className, ...props }) => <input className={cn("flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2", className)} {...props} />;
@@ -762,11 +798,18 @@ const ScannerPage = () => {
     );
 };
 // --- Games ---
-const FlashcardsPage = ({ words, collectionId, onBack }) => {
+const FlashcardsPage = ({ words, collectionId, onBack, onSwitchGame }) => {
     const { updateWordStatus, updateWordData, addPoints } = useApp();
     const { addToast } = useToast();
+    const playSound = useSound();
+
+    // Session State
     const [queue, setQueue] = useState([]);
     const [index, setIndex] = useState(0);
+    const [stats, setStats] = useState({ correct: [], wrong: [] });
+    const [isFinished, setIsFinished] = useState(false);
+
+    // Card State
     const [isFlipped, setIsFlipped] = useState(false);
     const [aiExplanation, setAiExplanation] = useState(null);
     const [isTranslating, setIsTranslating] = useState(false);
@@ -775,19 +818,35 @@ const FlashcardsPage = ({ words, collectionId, onBack }) => {
     const [dragX, setDragX] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const startX = useRef(0);
+    const sessionStarted = useRef(false);
 
     useEffect(() => {
+        if (sessionStarted.current) return;
         // SRS Queue Logic
         const now = Date.now();
         const dueReviews = words.filter(w => w.status !== 'new' && w.nextReview && w.nextReview <= now);
         const newWords = words.filter(w => w.status === 'new').slice(0, 10);
-        const learningWords = words.filter(w => w.status === 'learning' && (!w.nextReview || w.nextReview <= now));
 
-        let finalQueue = [...dueReviews, ...learningWords, ...newWords];
-        if (finalQueue.length === 0) finalQueue = words.filter(w => w.status === 'learning').sort(() => 0.5 - Math.random()).slice(0, 5);
+        let finalQueue = [...dueReviews, ...newWords];
 
-        if (finalQueue.length === 0) { addToast("Bugungi so'zlar tugadi! Dam oling.", 'success'); onBack(); return; }
+        // Use unique set to avoid duplicates if falling back
+        const uniqueIds = new Set(finalQueue.map(w => w.id));
+
+        // Fill up to 10 words if queue is small with random learning/mastered words
+        if (finalQueue.length < 5) {
+            const filler = words.filter(w => !uniqueIds.has(w.id)).sort(() => 0.5 - Math.random()).slice(0, 10 - finalQueue.length);
+            finalQueue = [...finalQueue, ...filler];
+        }
+
+        // If STILL empty (user has 0 words), show toast
+        if (finalQueue.length === 0) {
+            addToast("Papkada so'zlar yo'q.", 'error');
+            onBack();
+            return;
+        }
+
         setQueue(finalQueue);
+        sessionStarted.current = true;
     }, [words]);
 
     const currentWord = queue[index];
@@ -819,18 +878,96 @@ const FlashcardsPage = ({ words, collectionId, onBack }) => {
         updateWordData(collectionId, currentWord.id, updatedWord);
         addPoints(grade >= 4 ? 10 : 2);
 
-        setDragX(0); // Reset drag
-        setIsFlipped(false);
-        setAiExplanation(null);
+        // Track stats
+        if (grade >= 4) {
+            setStats(prev => ({ ...prev, correct: [...prev.correct, currentWord.id] }));
+            playSound && playSound('success');
+        } else {
+            setStats(prev => ({ ...prev, wrong: [...prev.wrong, currentWord.id] }));
+            playSound && playSound('error');
+        }
 
-        // Robust next logic
+        setDragX(0); setIsFlipped(false); setAiExplanation(null);
+
         if (index < queue.length - 1) {
             setIndex(i => i + 1);
         } else {
-            addToast("Mashq tugadi!", 'success');
-            onBack();
+            setIsFinished(true);
         }
     };
+
+    // --- Summary Actions ---
+    const handleKeepReviewing = () => {
+        const wrongWords = words.filter(w => stats.wrong.includes(w.id));
+        if (wrongWords.length === 0) {
+            addToast("Barchasi o'zlashtirildi!", 'success');
+            onBack();
+            return;
+        }
+        setQueue(wrongWords);
+        setIndex(0);
+        setStats({ correct: [], wrong: [] });
+        setIsFinished(false);
+        addToast(`${wrongWords.length} ta so'z qayta tiklanmoqda`, 'info');
+    };
+
+    const handleRestart = () => {
+        setIndex(0);
+        setStats({ correct: [], wrong: [] });
+        setIsFinished(false);
+    };
+
+    // --- Render Summary ---
+    if (isFinished) {
+        const total = stats.correct.length + stats.wrong.length;
+        const percentage = total > 0 ? Math.round((stats.correct.length / total) * 100) : 0;
+
+        return (
+            <div className="p-6 h-[calc(100vh-80px)] flex flex-col items-center justify-center space-y-8 animate-fade-in relative">
+                <Button variant="ghost" onClick={onBack} className="absolute top-4 left-4"><X className="h-6 w-6" /></Button>
+
+                <div className="text-center space-y-2">
+                    <h2 className="text-3xl font-black text-primary">Nice work!</h2>
+                    <p className="text-muted-foreground font-medium text-lg">Now let's try some practice questions.</p>
+                </div>
+
+                <div className="flex items-center gap-8 w-full max-w-sm justify-center">
+                    <div className="relative h-32 w-32 flex items-center justify-center">
+                        <svg className="h-full w-full transform -rotate-90">
+                            <circle cx="64" cy="64" r="56" className="stroke-orange-100 fill-none" strokeWidth="12" />
+                            <circle cx="64" cy="64" r="56" className="stroke-orange-500 fill-none" strokeWidth="12" strokeDasharray={351} strokeDashoffset={351 - (351 * percentage) / 100} strokeLinecap="round" />
+                        </svg>
+                        <span className="absolute text-3xl font-black text-primary">{percentage}%</span>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold flex justify-between items-center w-32">
+                            <span>Know</span> <span>{stats.correct.length}</span>
+                        </div>
+                        <div className="bg-orange-100 text-orange-600 px-4 py-2 rounded-xl font-bold flex justify-between items-center w-32">
+                            <span>Still learning</span> <span>{stats.wrong.length}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full max-w-sm space-y-3 pt-6">
+                    <Button onClick={() => onSwitchGame && onSwitchGame('writing')} className="w-full h-14 text-lg rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
+                        Practice with questions
+                    </Button>
+
+                    {stats.wrong.length > 0 && (
+                        <Button onClick={handleKeepReviewing} variant="outline" className="w-full h-14 text-lg rounded-full border-2 border-indigo-100 text-indigo-600 hover:bg-indigo-50">
+                            Keep reviewing {stats.wrong.length} terms
+                        </Button>
+                    )}
+
+                    <Button variant="ghost" onClick={handleRestart} className="w-full text-indigo-500 hover:bg-transparent hover:text-indigo-600">
+                        Restart Flashcards
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     // Gesture Handlers (Unified for Mouse & Touch)
     const handlePointerDown = (e) => {
@@ -891,7 +1028,12 @@ const FlashcardsPage = ({ words, collectionId, onBack }) => {
                         transform: `translateX(${dragX}px) rotate(${rotate}deg) rotateY(${isFlipped ? 180 : 0}deg)`,
                         transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                     }}
-                    onClick={() => !isDragging && Math.abs(dragX) < 10 && setIsFlipped(!isFlipped)}
+                    onClick={() => {
+                        if (!isDragging && Math.abs(dragX) < 10) {
+                            setIsFlipped(!isFlipped);
+                            playSound && playSound('swoosh');
+                        }
+                    }}
                 >
                     {/* Front Card */}
                     <Card className="absolute inset-0 backface-hidden flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-3xl">
@@ -978,13 +1120,149 @@ const FlashcardsPage = ({ words, collectionId, onBack }) => {
     );
 };
 
-const MatchingGamePage = ({ onBack }) => <div className="p-8 text-center flex flex-col items-center justify-center h-full"><h3 className="text-xl font-bold mb-4">Juftlik o'yini</h3><p className="text-muted-foreground mb-6">Tez orada...</p><Button onClick={onBack}>Qaytish</Button></div>;
-const WritingPracticePage = ({ onBack }) => <div className="p-8 text-center flex flex-col items-center justify-center h-full"><h3 className="text-xl font-bold mb-4">Yozish mashqi</h3><p className="text-muted-foreground mb-6">Tez orada...</p><Button onClick={onBack}>Qaytish</Button></div>;
+const MatchingGamePage = ({ words, onBack }) => {
+    const { addToast } = useToast();
+    const { addPoints } = useApp();
+    const playSound = useSound();
+    const [selected, setSelected] = useState([]);
+    const [matched, setMatched] = useState([]);
+    const [items, setItems] = useState([]);
+
+    useEffect(() => {
+        // Prepare game items: Take top 6 words and mix them up
+        const gameWords = words.sort(() => 0.5 - Math.random()).slice(0, 6);
+        const list = [
+            ...gameWords.map(w => ({ id: w.id, text: w.word, type: 'word' })),
+            ...gameWords.map(w => ({ id: w.id, text: w.translation || '?', type: 'def' }))
+        ].sort(() => 0.5 - Math.random());
+        setItems(list);
+    }, [words]);
+
+    const handleSelect = (item) => {
+        if (matched.includes(item.id)) return;
+        if (selected.length === 1) {
+            if (selected[0].text === item.text) return; // Same item clicked
+            const first = selected[0];
+            if (first.id === item.id) {
+                // Match!
+                setMatched([...matched, item.id]);
+                setSelected([]);
+                addPoints(5);
+                addToast("To'g'ri!", 'success');
+                playSound && playSound('success');
+                if (matched.length + 1 === items.length / 2) {
+                    setTimeout(() => { addToast("G'alaba! +30 ball", 'success'); onBack(); }, 1000);
+                }
+            } else {
+                // Wrong
+                setSelected([...selected, item]);
+                playSound && playSound('error');
+                setTimeout(() => setSelected([]), 1000);
+            }
+        } else {
+            setSelected([item]);
+            playSound && playSound('pop');
+        }
+    };
+
+    return (
+        <div className="p-4 h-full flex flex-col">
+            <div className="flex items-center mb-6">
+                <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
+                <h2 className="text-xl font-bold ml-auto">Juftlikni top</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-3 flex-1 content-start">
+                {items.map((item, idx) => {
+                    const isSelected = selected.some(s => s.text === item.text);
+                    const isMatched = matched.includes(item.id);
+                    return (
+                        <Card
+                            key={idx}
+                            onClick={() => !isMatched && handleSelect(item)}
+                            className={`p-2 h-24 flex items-center justify-center text-center text-sm font-bold cursor-pointer transition-all duration-300
+                                ${isMatched ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}
+                                ${isSelected ? 'bg-primary text-primary-foreground scale-105 shadow-xl ring-2 ring-primary' : 'bg-card hover:bg-muted'}
+                            `}
+                        >
+                            {item.text}
+                        </Card>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const WritingPracticePage = ({ words, onBack }) => {
+    const { addToast } = useToast();
+    const { addPoints } = useApp();
+    const playSound = useSound();
+    const [queue, setQueue] = useState(words.sort(() => 0.5 - Math.random()).slice(0, 10));
+    const [index, setIndex] = useState(0);
+    const [input, setInput] = useState("");
+    const [status, setStatus] = useState('idle'); // idle, correct, wrong
+
+    const currentWord = queue[index];
+
+    const handleCheck = () => {
+        if (input.trim().toLowerCase() === currentWord.word.toLowerCase()) {
+            setStatus('correct');
+            addPoints(10);
+            addToast("To'g'ri!", 'success');
+            playSound && playSound('success');
+            setTimeout(() => {
+                if (index < queue.length - 1) {
+                    setIndex(i => i + 1);
+                    setInput("");
+                    setStatus('idle');
+                } else {
+                    addToast("Mashq tugadi!", 'success');
+                    onBack();
+                }
+            }, 1000);
+        } else {
+            setStatus('wrong');
+            addToast("Xato, qayta urinib ko'ring", 'error');
+            playSound && playSound('error');
+        }
+    };
+
+    if (!currentWord) return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto" /></div>;
+
+    return (
+        <div className="p-6 h-full flex flex-col max-w-md mx-auto">
+            <Button variant="ghost" onClick={onBack} className="self-start mb-8 pl-0"><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
+
+            <div className="flex-1 space-y-8">
+                <div className="space-y-2 text-center">
+                    <span className="text-sm text-muted-foreground uppercase tracking-widest">Tarjimani toping</span>
+                    <h2 className="text-3xl font-bold">{currentWord.translation}</h2>
+                    {status === 'wrong' && <p className="text-red-500 animate-pulse">Javob: {currentWord.word}</p>}
+                </div>
+
+                <div className="space-y-4">
+                    <Input
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        className={`h-14 text-center text-xl ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-700' : status === 'wrong' ? 'border-red-500 bg-red-50' : ''}`}
+                        placeholder="Inglizcha..."
+                    />
+                    <Button size="lg" className="w-full h-14 text-lg" onClick={handleCheck} disabled={status === 'correct'}>
+                        {status === 'correct' ? <Check className="h-6 w-6" /> : "Tekshirish"}
+                    </Button>
+                </div>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground mb-4">
+                {index + 1} / {queue.length}
+            </div>
+        </div>
+    );
+};
 
 // --- Middle Pages ---
 const FolderDetail = ({ folderId, onBack, onNavigate }) => {
     const { collections, addToCollection } = useApp();
-    const { addToast } = useToast();
     const [isAddingWord, setIsAddingWord] = useState(false);
     const [newWord, setNewWord] = useState({ word: "", translation: "" });
     const folder = collections.find(c => c.id === folderId);
@@ -1016,7 +1294,7 @@ const LearnPage = ({ initialFolderId }) => {
 
     if (step === 'game' && folder) {
         const props = { words: folder.wordList, collectionId: folder.id, onBack: () => setStep('method') };
-        if (mode === 'flashcards') return <FlashcardsPage {...props} />;
+        if (mode === 'flashcards') return <FlashcardsPage {...props} onSwitchGame={(newMode) => { setMode(newMode); setStep('game'); }} />;
         if (mode === 'matching') return <MatchingGamePage {...props} />;
         if (mode === 'writing') return <WritingPracticePage {...props} />;
     }
