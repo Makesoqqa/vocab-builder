@@ -213,7 +213,11 @@ export const AppProvider = ({ children }) => {
 
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
-            tg.ready(); tg.expand();
+            tg.ready();
+            tg.expand();
+            if (tg.requestFullscreen) tg.requestFullscreen();
+            if (tg.setHeaderColor) tg.setHeaderColor(isDarkMode ? '#0f172a' : '#ffffff');
+            if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
             if (tg.initDataUnsafe?.user) setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
             if (tg.colorScheme === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
         }
@@ -1230,8 +1234,8 @@ const WritingPracticePage = ({ words, onBack }) => {
     if (!currentWord) return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto" /></div>;
 
     return (
-        <div className="p-6 h-full flex flex-col max-w-md mx-auto">
-            <Button variant="ghost" onClick={onBack} className="self-start mb-8 pl-0"><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
+        <div className="p-6 h-full min-h-[100dvh] flex flex-col max-w-md mx-auto">
+            <Button variant="ghost" onClick={onBack} className="self-start mb-4 pl-0"><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
 
             <div className="flex-1 space-y-8">
                 <div className="space-y-2 text-center">
