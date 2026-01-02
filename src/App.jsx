@@ -315,6 +315,8 @@ export const AppProvider = ({ children }) => {
 
     }, [user, collections, currentUser, isSyncing, recentCollectionId]);
 
+    const [isTelegram, setIsTelegram] = useState(false);
+
     // 4. Telegram Integration
     useEffect(() => {
         if (window.Telegram?.WebApp) {
@@ -322,6 +324,8 @@ export const AppProvider = ({ children }) => {
                 const tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
+                tg.enableClosingConfirmation(); // Prevents accidental swipe-close
+                setIsTelegram(true);
 
                 // Fullscreen ONLY on mobile
                 if (tg.platform === 'ios' || tg.platform === 'android') {
@@ -350,6 +354,22 @@ export const AppProvider = ({ children }) => {
 
     const loginWithGoogle = async () => {
         try {
+            // Check if running in Telegram WebView
+            if (window.Telegram?.WebApp?.platform) {
+                // For Telegram: Open OAuth in external browser to avoid Error 403
+                addToast("Tashqi brauzerda ochilmoqda...", 'info');
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                    `client_id=${encodeURIComponent(import.meta.env.VITE_FIREBASE_API_KEY || '')}&` +
+                    `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
+                    `response_type=code&` +
+                    `scope=openid%20email%20profile`;
+
+                window.Telegram.WebApp.openLink(authUrl);
+                addToast("Brauzerda Google bilan kiring", 'info');
+                return;
+            }
+
+            // For regular browsers
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             if (isMobile) {
                 await signInWithRedirect(auth, googleProvider);
@@ -360,7 +380,6 @@ export const AppProvider = ({ children }) => {
         } catch (error) {
             console.error(error);
             if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-                // Fallback to redirect if popup fails even on desktop
                 try { await signInWithRedirect(auth, googleProvider); } catch (e) { }
             }
             addToast(`Kirishda xatolik: ${error.message}`, 'error');
@@ -438,16 +457,16 @@ export const AppProvider = ({ children }) => {
 
     return (
         <AppContext.Provider value={{
-            user, setUser, collections, isDarkMode, toggleTheme,
-            addCollection, addToCollection, removeCollection, addPoints, removeWord, updateWordStatus, updateWordData,
-            updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })),
-            setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })),
-            recentCollectionId,
-            currentUser, loginWithGoogle, logout
+            user, setUser, collections, addCollection, addToCollection, removeCollection,
+            updateWordStatus, updateWordData, addPoints, removeWord,
+            isDarkMode, toggleTheme, recentCollectionId, setRecentCollectionId,
+            currentUser, loginWithGoogle, logout, isSyncing, isTelegram
         }}>
-            <SoundProvider>
-                {children}
-            </SoundProvider>
+            <div className={isDarkMode ? 'dark' : ''}>
+                <div className="bg-background text-foreground min-h-screen transition-colors duration-300">
+                    {children}
+                </div>
+            </div>
         </AppContext.Provider>
     );
 };
@@ -1775,14 +1794,30 @@ const HomePage = ({ onNavigate }) => {
 };
 
 const MainContent = ({ activeTab, setActiveTab }) => {
-    const { user, setTutorialSeen } = useApp();
+    const { user, setTutorialSeen, isTelegram } = useApp();
     const [navData, setNavData] = useState(null);
     const handleNavigate = (tab, data) => { setActiveTab(tab); setNavData(data); };
 
     return (
         <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             {!user.tutorialSeen && <Onboarding onFinish={setTutorialSeen} />}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl"><div className="mx-auto flex h-16 max-w-md items-center justify-between px-4"><div><h1 className="text-xl font-bold tracking-tight">Vocab Builder</h1></div><StreakBadge /></div></header>
+            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+                <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
+                    {isTelegram ? (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive font-medium -ml-2"
+                            onClick={() => window.Telegram?.WebApp?.close()}
+                        >
+                            <X className="h-5 w-5 mr-1" /> Yopish
+                        </Button>
+                    ) : (
+                        <div><h1 className="text-xl font-bold tracking-tight">Vocab Builder</h1></div>
+                    )}
+                    <StreakBadge />
+                </div>
+            </header>
             <main className="pb-24">
                 {activeTab === "home" && <HomePage onNavigate={handleNavigate} />}
                 {activeTab === "learn" && <LearnPage initialFolderId={navData?.folderId} />}
