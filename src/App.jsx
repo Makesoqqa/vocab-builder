@@ -1302,8 +1302,13 @@ const WritingPracticePage = ({ words, onBack }) => {
 // --- Middle Pages ---
 const FolderDetail = ({ folderId, onBack, onNavigate }) => {
     const { collections, addToCollection, removeWord } = useApp();
+    const { addToast } = useToast();
     const [isAddingWord, setIsAddingWord] = useState(false);
+    const [addMode, setAddMode] = useState('single'); // 'single' | 'bulk'
     const [newWord, setNewWord] = useState({ word: "", translation: "" });
+    const [bulkText, setBulkText] = useState("");
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
     const folder = collections.find(c => c.id === folderId);
     if (!folder) return null;
 
@@ -1313,11 +1318,80 @@ const FolderDetail = ({ folderId, onBack, onNavigate }) => {
         setNewWord({ word: "", translation: "" }); setIsAddingWord(false); addToast("So'z qo'shildi", 'success');
     };
 
+    const handleBulkImport = async () => {
+        if (!bulkText.trim()) return;
+        setIsAnalyzing(true);
+        try {
+            // Robust prompt for parsing lists
+            const prompt = `Act as a data parser. Extract English words/phrases and their meanings from this text. 
+            Ignore numbers, bullet points (a, b, 1, 2), and clean up formatting.
+            Return ONLY a raw JSON array (no markdown blocks) of objects with this structure:
+            [{"word": "english_word", "translation": "uzbek_translation_if_present_else_empty_string"}]
+            
+            Text to parse:
+            ${bulkText}`;
+
+            const resText = await mockAiService(prompt, null); // Pass null for image
+            const parsed = parseGeminiJSON(resText);
+
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const newItems = parsed.map((w, i) => ({
+                    id: Date.now() + i,
+                    word: w.word,
+                    translation: w.translation || "",
+                    status: 'new'
+                }));
+                addToCollection(folderId, newItems);
+                addToast(`${newItems.length} ta so'z qo'shildi!`, 'success');
+                setIsAddingWord(false);
+                setBulkText("");
+            } else {
+                addToast("So'zlar topilmadi yoki format noto'g'ri", 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            addToast("Xatolik yuz berdi", 'error');
+        }
+        setIsAnalyzing(false);
+    };
+
     return (
         <div className="p-4 space-y-6 pb-32 animate-slide-up">
             <div className="flex items-center gap-4"><Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button><div><h2 className="text-2xl font-bold">{folder.title}</h2><p className="text-muted-foreground">{folder.words} ta so'z</p></div></div>
             <div className="flex gap-2"><Button className="flex-1" onClick={() => onNavigate('learn', { folderId })}> <Play className="h-4 w-4 mr-2" /> O'rganish</Button><Button variant="outline" onClick={() => setIsAddingWord(true)}><Plus className="h-4 w-4" /></Button></div>
-            {isAddingWord && <Card className="p-4 space-y-3 bg-muted/30"><Input placeholder="So'z" value={newWord.word} onChange={e => setNewWord({ ...newWord, word: e.target.value })} /><Input placeholder="Tarjima" value={newWord.translation} onChange={e => setNewWord({ ...newWord, translation: e.target.value })} /><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setIsAddingWord(false)}>Bekor</Button><Button size="sm" onClick={handleAddWord}>Saqlash</Button></div></Card>}
+
+            {isAddingWord && (
+                <Card className="p-4 space-y-4 bg-muted/30 border-2 border-primary/20">
+                    <div className="flex p-1 bg-background rounded-lg border">
+                        <button onClick={() => setAddMode('single')} className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${addMode === 'single' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted'}`}>Bittalab</button>
+                        <button onClick={() => setAddMode('bulk')} className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${addMode === 'bulk' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted'}`}>Ro'yxatdan</button>
+                    </div>
+
+                    {addMode === 'single' ? (
+                        <div className="space-y-3 animate-fade-in">
+                            <Input placeholder="So'z (English)" value={newWord.word} onChange={e => setNewWord({ ...newWord, word: e.target.value })} autoFocus />
+                            <Input placeholder="Tarjima" value={newWord.translation} onChange={e => setNewWord({ ...newWord, translation: e.target.value })} />
+                            <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setIsAddingWord(false)}>Bekor</Button><Button size="sm" onClick={handleAddWord}>Saqlash</Button></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 animate-fade-in">
+                            <textarea
+                                className="w-full h-32 p-3 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="So'zlarni bu yerga tashlang...&#10;Masalan:&#10;a) situation b) per annum&#10;1. apple - olma"
+                                value={bulkText}
+                                onChange={e => setBulkText(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => setIsAddingWord(false)}>Bekor</Button>
+                                <Button size="sm" onClick={handleBulkImport} isLoading={isAnalyzing} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0">
+                                    <Sparkles className="h-4 w-4 mr-2" /> Sehrli Import
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </Card>
+            )}
+
             <div className="space-y-2">{folder.wordList.map((word) => (
                 <Card key={word.id} className="p-3 flex justify-between items-center group">
                     <div><div className="font-medium">{word.word}</div><div className="text-sm text-muted-foreground">{word.translation}</div></div>
