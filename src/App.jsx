@@ -49,24 +49,46 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Initialize Gemini API
 // Initialize Gemini API
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Keep genAI instance for local fallback/dev
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 const mockAiService = async (prompt, imageBase64 = null) => {
+    // 1. Try Vercel API Route (Secure Proxy)
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, imageBase64 })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.text;
+        } else {
+            console.warn("Backend Proxy failed, falling back to client SDK if available.", response.status);
+        }
+    } catch (e) {
+        console.warn("Backend Proxy unreachable, using client fetch fallback.", e);
+    }
+
+    // 2. Fallback: Client-side SDK (Localhost / Direct)
+    if (!genAI) {
+        throw new Error("AI Service Unavailable: No Backend and No Local API Key.");
+    }
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         let result;
         if (imageBase64) {
-            // Extract base64 data correctly - handle both data URI and raw base64
+            // Extract base64 data
             const base64Data = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
-
             const imagePart = {
                 inlineData: {
                     data: base64Data,
                     mimeType: "image/jpeg",
                 },
             };
-            // Add explicit instruction for JSON if it's an analysis task
             const augmentedPrompt = prompt + (prompt.includes("JSON") ? "" : ". Return the result in pure JSON format if possible.");
             result = await model.generateContent([augmentedPrompt, imagePart]);
         } else {
@@ -75,11 +97,10 @@ const mockAiService = async (prompt, imageBase64 = null) => {
 
         const response = await result.response;
         const text = response.text();
-        console.log("Gemini API Response:", text);
+        console.log("Gemini API Response (Client):", text);
         return text;
     } catch (error) {
         console.error("Gemini API Error:", error);
-        // Fallback or rethrow? Let's return a friendly error message or rethrow for the UI to handle
         throw new Error("AI Error: " + error.message);
     }
 };
@@ -1506,8 +1527,7 @@ const HomePage = ({ onNavigate }) => {
             {isAdding && (
                 <Card className="p-4 border-2 border-primary/20 animate-fade-in">
                     <Input value={folderName} onChange={(e) => setFolderName(e.target.value)} placeholder="Nomi..." autoFocus />
-                    <div className="flex items-center gap-2 mt-2"><span className="text-xs">AI</span><input type="checkbox" checked={isAiMode} onChange={() => setIsAiMode(!isAiMode)} className="toggle accent-primary" /></div>
-                    <div className="flex gap-2 mt-3 justify-end"><Button variant="ghost" onClick={() => setIsAdding(false)}>Bekor</Button><Button onClick={handleCreate} isLoading={isGenerating}>Yaratish</Button></div>
+                    <div className="flex gap-2 mt-3 justify-end"><Button variant="ghost" onClick={() => setIsAdding(false)}>Bekor</Button><Button onClick={handleCreate}>Yaratish</Button></div>
                 </Card>
             )}
             <div className="grid grid-cols-1 gap-3">
