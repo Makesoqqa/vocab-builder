@@ -1322,13 +1322,15 @@ const FolderDetail = ({ folderId, onBack, onNavigate }) => {
         if (!bulkText.trim()) return;
         setIsAnalyzing(true);
         try {
-            // Robust prompt for parsing lists
-            const prompt = `Act as a data parser. Extract English words/phrases and their meanings from this text. 
-            Ignore numbers, bullet points (a, b, 1, 2), and clean up formatting.
-            Return ONLY a raw JSON array (no markdown blocks) of objects with this structure:
-            [{"word": "english_word", "translation": "uzbek_translation_if_present_else_empty_string"}]
+            // Robust prompt for parsing AND translating
+            const prompt = `Act as a dictionary data parser. 
+            Step 1: Extract English words/phrases from the text. Ignore numbers/bullets (a, b, 1. etc).
+            Step 2: If the text already has a translation, use it. IF NOT, TRANSLATE the English word to UZBEK yourself.
             
-            Text to parse:
+            Return ONLY a raw JSON array of objects:
+            [{"word": "english_word", "translation": "uzbek_translation"}]
+            
+            Text to parse and translate:
             ${bulkText}`;
 
             const resText = await mockAiService(prompt, null); // Pass null for image
