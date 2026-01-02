@@ -648,12 +648,13 @@ const SelectionScanner = ({ onBack }) => {
 
                     canvas.width = width;
                     canvas.height = height;
-                    const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8)); // 80% quality
                 };
                 img.src = event.target.result;
-                reader.readAsDataURL(file);
-            });
+            };
+            reader.readAsDataURL(file);
+        });
     };
 
     const handleFileChange = async (e) => {
