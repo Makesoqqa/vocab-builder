@@ -47,7 +47,7 @@ const parseGeminiJSON = (text) => {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 // --- Firebase ---
 import { auth, googleProvider, db } from "./lib/firebase";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
 // Initialize Gemini API
@@ -350,11 +350,20 @@ export const AppProvider = ({ children }) => {
 
     const loginWithGoogle = async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                await signInWithRedirect(auth, googleProvider);
+            } else {
+                await signInWithPopup(auth, googleProvider);
+            }
             addToast("Xush kelibsiz!", 'success');
-        } catch (e) {
-            console.error(e);
-            alert("Kirishda xatolik: " + e.message);
+        } catch (error) {
+            console.error(error);
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+                // Fallback to redirect if popup fails even on desktop
+                try { await signInWithRedirect(auth, googleProvider); } catch (e) { }
+            }
+            addToast(`Kirishda xatolik: ${error.message}`, 'error');
         }
     };
 
