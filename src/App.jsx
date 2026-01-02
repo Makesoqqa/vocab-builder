@@ -47,7 +47,8 @@ const parseGeminiJSON = (text) => {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini API
-const API_KEY = "AIzaSyCQPuhwX-Ki7Ax5g7FVqVB6zfKHnHLVgEw";
+// Initialize Gemini API
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const mockAiService = async (prompt, imageBase64 = null) => {
