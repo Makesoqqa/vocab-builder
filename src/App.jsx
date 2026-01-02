@@ -212,14 +212,18 @@ export const AppProvider = ({ children }) => {
         if (savedRecent) setRecentCollectionId(parseInt(savedRecent));
 
         if (window.Telegram?.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            if (tg.requestFullscreen) tg.requestFullscreen();
-            if (tg.setHeaderColor) tg.setHeaderColor(isDarkMode ? '#0f172a' : '#ffffff');
-            if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
-            if (tg.initDataUnsafe?.user) setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
-            if (tg.colorScheme === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
+            try {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                if (tg.requestFullscreen) tg.requestFullscreen();
+                if (tg.setHeaderColor) tg.setHeaderColor(isDarkMode ? '#0f172a' : '#ffffff');
+                if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
+                if (tg.initDataUnsafe?.user) setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
+                if (tg.colorScheme === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
+            } catch (e) {
+                console.warn("Telegram WebApp API Error:", e);
+            }
         }
     }, []);
 
@@ -281,9 +285,18 @@ export const AppProvider = ({ children }) => {
             return { ...prev, points: newPoints, wordsLearned: newLearned, achievements: newAchievements, dailyChallenge: { ...prev.dailyChallenge, completed: newCompleted } };
         });
     };
+    const removeWord = (collectionId, wordId) => {
+        setCollections(collections.map(col => {
+            if (col.id === collectionId) {
+                const updatedList = col.wordList.filter(w => w.id !== wordId);
+                return { ...col, words: updatedList.length, wordList: updatedList };
+            }
+            return col;
+        }));
+    };
 
     return (
-        <AppContext.Provider value={{ user, setUser, collections, isDarkMode, toggleTheme, addCollection, addToCollection, removeCollection, addPoints, updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })), setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })), recentCollectionId, updateWordStatus, updateWordData }}>
+        <AppContext.Provider value={{ user, setUser, collections, isDarkMode, toggleTheme, addCollection, addToCollection, removeCollection, addPoints, removeWord, updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })), setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })), recentCollectionId, updateWordStatus, updateWordData }}>
             <SoundProvider>
                 {children}
             </SoundProvider>
@@ -326,7 +339,7 @@ const Button = ({ className, variant = "default", size = "default", isLoading, c
     const sizes = { default: "h-10 px-4 py-2", sm: "h-9 rounded-md px-3", icon: "h-10 w-10 p-0" };
     return <button className={cn("inline-flex items-center justify-center rounded-2xl text-sm font-medium transition-all duration-200 disabled:opacity-50", variants[variant], sizes[size], className)} disabled={isLoading || props.disabled} onClick={handleClick} {...props}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{children}</button>;
 };
-const Card = ({ className, ...props }) => <div className={cn("rounded-2xl border border-border bg-card text-card-foreground shadow-sm", className)} {...props} />;
+const Card = ({ className, ...props }) => <div className={cn("rounded-2xl border border-input bg-card text-card-foreground shadow-sm", className)} {...props} />;
 const Input = ({ className, ...props }) => <input className={cn("flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2", className)} {...props} />;
 const Badge = ({ className, variant = "default", ...props }) => {
     const variants = { default: "bg-primary text-primary-foreground", secondary: "bg-secondary text-secondary-foreground" };
@@ -403,8 +416,8 @@ const HighlightedScanner = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col h-full space-y-4 animate-slide-up">
-            <Button variant="ghost" onClick={onBack} className="self-start pl-0 gap-2"><ArrowLeft className="h-5 w-5" /> Orqaga</Button>
+        <div className="fixed inset-0 z-[60] bg-background flex flex-col items-center justify-center p-6 animate-scale-in">
+            <Button variant="ghost" className="absolute top-4 left-4" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Chiqish</Button>
             {!image ? (
                 <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-3xl p-8 space-y-4 bg-secondary/20 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                     <div className="h-24 w-24 rounded-full bg-yellow-100 flex items-center justify-center animate-pulse"><Highlighter className="h-12 w-12 text-yellow-600" /></div>
@@ -1170,9 +1183,9 @@ const MatchingGamePage = ({ words, onBack }) => {
     };
 
     return (
-        <div className="p-4 h-full flex flex-col">
-            <div className="flex items-center mb-6">
-                <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
+        <div className="fixed inset-0 z-[60] bg-background flex flex-col p-4 animate-scale-in max-w-md mx-auto">
+            <div className="flex justify-between items-center mb-4">
+                <Button variant="ghost" onClick={onBack} className="pl-0"><ArrowLeft className="mr-2 h-4 w-4" /> Chiqish</Button>
                 <h2 className="text-xl font-bold ml-auto">Juftlikni top</h2>
             </div>
             <div className="grid grid-cols-3 gap-3 flex-1 content-start">
@@ -1234,7 +1247,7 @@ const WritingPracticePage = ({ words, onBack }) => {
     if (!currentWord) return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto" /></div>;
 
     return (
-        <div className="p-6 h-full min-h-[100dvh] flex flex-col max-w-md mx-auto">
+        <div className="fixed inset-0 z-[60] bg-background p-6 h-full min-h-[100dvh] flex flex-col max-w-md mx-auto overscroll-none">
             <Button variant="ghost" onClick={onBack} className="self-start mb-4 pl-0"><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
 
             <div className="flex-1 space-y-8">
@@ -1266,7 +1279,7 @@ const WritingPracticePage = ({ words, onBack }) => {
 
 // --- Middle Pages ---
 const FolderDetail = ({ folderId, onBack, onNavigate }) => {
-    const { collections, addToCollection } = useApp();
+    const { collections, addToCollection, removeWord } = useApp();
     const [isAddingWord, setIsAddingWord] = useState(false);
     const [newWord, setNewWord] = useState({ word: "", translation: "" });
     const folder = collections.find(c => c.id === folderId);
@@ -1283,7 +1296,15 @@ const FolderDetail = ({ folderId, onBack, onNavigate }) => {
             <div className="flex items-center gap-4"><Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button><div><h2 className="text-2xl font-bold">{folder.title}</h2><p className="text-muted-foreground">{folder.words} ta so'z</p></div></div>
             <div className="flex gap-2"><Button className="flex-1" onClick={() => onNavigate('learn', { folderId })}> <Play className="h-4 w-4 mr-2" /> O'rganish</Button><Button variant="outline" onClick={() => setIsAddingWord(true)}><Plus className="h-4 w-4" /></Button></div>
             {isAddingWord && <Card className="p-4 space-y-3 bg-muted/30"><Input placeholder="So'z" value={newWord.word} onChange={e => setNewWord({ ...newWord, word: e.target.value })} /><Input placeholder="Tarjima" value={newWord.translation} onChange={e => setNewWord({ ...newWord, translation: e.target.value })} /><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setIsAddingWord(false)}>Bekor</Button><Button size="sm" onClick={handleAddWord}>Saqlash</Button></div></Card>}
-            <div className="space-y-2">{folder.wordList.map((word) => (<Card key={word.id} className="p-3 flex justify-between items-center"><div><div className="font-medium">{word.word}</div><div className="text-sm text-muted-foreground">{word.translation}</div></div><Badge variant={word.status === 'mastered' ? 'default' : 'secondary'}>{word.status === 'mastered' ? "Bilaman" : "O'rganish"}</Badge></Card>))}</div>
+            <div className="space-y-2">{folder.wordList.map((word) => (
+                <Card key={word.id} className="p-3 flex justify-between items-center group">
+                    <div><div className="font-medium">{word.word}</div><div className="text-sm text-muted-foreground">{word.translation}</div></div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant={word.status === 'mastered' ? 'default' : 'secondary'}>{word.status === 'mastered' ? "Bilaman" : "O'rganish"}</Badge>
+                        <button onClick={(e) => { e.stopPropagation(); removeWord(folderId, word.id); }} className="p-2 rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                </Card>
+            ))}</div>
         </div>
     );
 };
