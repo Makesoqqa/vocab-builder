@@ -315,6 +315,39 @@ export const AppProvider = ({ children }) => {
 
     }, [user, collections, currentUser, isSyncing, recentCollectionId]);
 
+    // 4. Telegram Integration
+    useEffect(() => {
+        if (window.Telegram?.WebApp) {
+            try {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+
+                // Fullscreen ONLY on mobile
+                if (tg.platform === 'ios' || tg.platform === 'android') {
+                    if (tg.requestFullscreen) tg.requestFullscreen();
+                } else {
+                    if (tg.exitFullscreen) tg.exitFullscreen();
+                }
+
+                // Theme & Header
+                if (tg.setHeaderColor) tg.setHeaderColor(isDarkMode ? '#0f172a' : '#ffffff');
+                if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
+
+                // User Name Sync (if not logged in via Firebase)
+                if (tg.initDataUnsafe?.user && !currentUser) {
+                    setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
+                }
+
+                // Theme Sync
+                if (tg.colorScheme === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
+
+            } catch (e) {
+                console.warn("Telegram WebApp API Error:", e);
+            }
+        }
+    }, [isDarkMode, currentUser]);
+
     const loginWithGoogle = async () => {
         try {
             await signInWithPopup(auth, googleProvider);
@@ -617,12 +650,10 @@ const SelectionScanner = ({ onBack }) => {
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8)); // 80% quality
                 };
                 img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
+                reader.readAsDataURL(file);
+            });
     };
 
     const handleFileChange = async (e) => {
