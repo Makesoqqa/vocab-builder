@@ -45,8 +45,11 @@ const parseGeminiJSON = (text) => {
 // --- Mock AI Service (Replaces Gemini API) ---
 // --- Real AI Service (Gemini API) ---
 import { GoogleGenerativeAI } from "@google/generative-ai";
+// --- Firebase ---
+import { auth, googleProvider, db } from "./lib/firebase";
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
-// Initialize Gemini API
 // Initialize Gemini API
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 // Keep genAI instance for local fallback/dev
@@ -224,46 +227,119 @@ export const AppProvider = ({ children }) => {
     const [collections, setCollections] = useState(initialCollections);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [recentCollectionId, setRecentCollectionId] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null); // Firebase User
+    const [isSyncing, setIsSyncing] = useState(true); // Start as syncing to check auth
 
+    // 1. Auth & Initial Load
     useEffect(() => {
-        const savedUser = localStorage.getItem('vb_user');
-        const savedCol = localStorage.getItem('vb_collections');
-        const savedRecent = localStorage.getItem('vb_recent');
-        if (savedUser) setUser(JSON.parse(savedUser));
-        if (savedCol && JSON.parse(savedCol).length > 0) setCollections(JSON.parse(savedCol));
-        if (savedRecent) setRecentCollectionId(parseInt(savedRecent));
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                console.log("Logged in:", firebaseUser.email);
+                setCurrentUser(firebaseUser);
+                setIsSyncing(true);
 
-        if (window.Telegram?.WebApp) {
-            try {
-                const tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                if (tg.requestFullscreen) tg.requestFullscreen();
-                if (tg.setHeaderColor) tg.setHeaderColor(isDarkMode ? '#0f172a' : '#ffffff');
-                if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
-                if (tg.initDataUnsafe?.user) setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
-                if (tg.colorScheme === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
-            } catch (e) {
-                console.warn("Telegram WebApp API Error:", e);
+                // Load from Cloud (Initial Fetch)
+                const docRef = doc(db, "users", firebaseUser.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.user) setUser(curr => ({ ...curr, ...data.user, name: data.user.name || firebaseUser.displayName }));
+                    if (data.collections) setCollections(data.collections);
+                } else {
+                    // New Cloud User: Save current local state to cloud immediately
+                    await setDoc(docRef, { user, collections });
+                }
+                setIsSyncing(false);
+            } else {
+                console.log("Logged out");
+                setCurrentUser(null);
+                // Load LocalStorage if not logged in
+                const savedUser = localStorage.getItem('vb_user');
+                const savedCol = localStorage.getItem('vb_collections');
+                if (savedUser) setUser(JSON.parse(savedUser));
+                else setUser(initialUser);
+                if (savedCol) setCollections(JSON.parse(savedCol));
+                setIsSyncing(false);
             }
-        }
+        });
+        return () => unsubscribe();
     }, []);
 
+    // 2. Real-time Cloud Listener (Pull)
     useEffect(() => {
+        if (!currentUser) return;
+
+        const unsubscribe = onSnapshot(doc(db, "users", currentUser.uid), (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                // We avoid infinite loop by check: deep compare could be better but simplistic check helps
+                // Actually, relying on optimistic UI + eventual consistency. 
+                // For now, let's just sync everything on remote change.
+                if (data.collections && JSON.stringify(data.collections) !== JSON.stringify(collections)) {
+                    console.log("Cloud update received");
+                    setCollections(data.collections);
+                }
+                // User points/achievements sync
+                if (data.user && data.user.points !== user.points) {
+                    setUser(u => ({ ...u, ...data.user }));
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [currentUser]);
+    // Excluded 'collections'/'user' dependency to avoid reacting to local changes here, 
+    // BUT we need to push local changes. See #3.
+
+    // 3. Local -> Cloud Sync (Push)
+    useEffect(() => {
+        if (currentUser && !isSyncing) {
+            const saveData = async () => {
+                try {
+                    await setDoc(doc(db, "users", currentUser.uid), {
+                        user: { ...user, name: currentUser.displayName || user.name },
+                        collections
+                    }, { merge: true });
+                } catch (e) {
+                    console.error("Sync Error:", e);
+                }
+            };
+            const timeout = setTimeout(saveData, 2000); // 2s debounce
+            return () => clearTimeout(timeout);
+        }
+
+        // Always save to LocalStorage as backup/cache
         localStorage.setItem('vb_user', JSON.stringify(user));
         localStorage.setItem('vb_collections', JSON.stringify(collections));
         if (recentCollectionId) localStorage.setItem('vb_recent', recentCollectionId);
-    }, [user, collections, recentCollectionId]);
 
-    const toggleTheme = () => { setIsDarkMode(!isDarkMode); document.documentElement.classList.toggle('dark'); };
+    }, [user, collections, currentUser, isSyncing, recentCollectionId]);
 
-    const addCollection = (title, icon = "📁", aiData = []) => {
-        const newCol = { id: Date.now(), title: title || "Yangi Papka", words: aiData.length || 0, progress: 0, color: "bg-gray-100 text-gray-800", icon, wordList: aiData.map(w => ({ ...w, status: 'new' })) };
-        setCollections([newCol, ...collections]);
+    const loginWithGoogle = async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+            addToast("Xush kelibsiz!", 'success');
+        } catch (e) {
+            console.error(e);
+            alert("Kirishda xatolik: " + e.message);
+        }
     };
 
+    const logout = async () => {
+        await signOut(auth);
+        setUser(initialUser);
+        setCollections(initialCollections);
+        window.location.reload(); // Clean state reset
+    };
+
+    // ... Original reducers ...
+    const toggleTheme = () => { setIsDarkMode(!isDarkMode); document.documentElement.classList.toggle('dark'); };
+    const addCollection = (title, icon = "📁", aiData = []) => {
+        const newCol = { id: Date.now(), title: title || "Yangi Papka", words: aiData.length || 0, progress: 0, color: "bg-gray-100 text-gray-800", icon, wordList: aiData.map(w => ({ ...w, status: 'new' })) };
+        setCollections(prev => [newCol, ...prev]);
+    };
     const addToCollection = (collectionId, newWords) => {
-        setCollections(collections.map(col => {
+        setCollections(prev => prev.map(col => {
             if (col.id === collectionId) {
                 const updatedList = [...(col.wordList || []), ...newWords.map(w => ({ ...w, status: 'new' }))];
                 return { ...col, words: updatedList.length, wordList: updatedList };
@@ -271,9 +347,11 @@ export const AppProvider = ({ children }) => {
             return col;
         }));
     };
+    const removeCollection = (id) => { setCollections(prev => prev.filter(c => c.id !== id)); };
 
+    // ... Word helpers ...
     const updateWordStatus = (collectionId, wordId, status) => {
-        setCollections(collections.map(col => {
+        setCollections(prev => prev.map(col => {
             if (col.id === collectionId) {
                 const updatedList = col.wordList.map(w => w.id === wordId ? { ...w, status } : w);
                 const masteredCount = updatedList.filter(w => w.status === 'mastered').length;
@@ -285,7 +363,7 @@ export const AppProvider = ({ children }) => {
     };
 
     const updateWordData = (collectionId, wordId, data) => {
-        setCollections(collections.map(col => {
+        setCollections(prev => prev.map(col => {
             if (col.id === collectionId) {
                 const updatedList = col.wordList.map(w => w.id === wordId ? { ...w, ...data } : w);
                 return { ...col, wordList: updatedList };
@@ -293,8 +371,6 @@ export const AppProvider = ({ children }) => {
             return col;
         }));
     };
-
-    const removeCollection = (id) => { setCollections(collections.filter(c => c.id !== id)); };
 
     const addPoints = (amount) => {
         setUser(prev => {
@@ -307,18 +383,26 @@ export const AppProvider = ({ children }) => {
             return { ...prev, points: newPoints, wordsLearned: newLearned, achievements: newAchievements, dailyChallenge: { ...prev.dailyChallenge, completed: newCompleted } };
         });
     };
-    const removeWord = (collectionId, wordId) => {
-        setCollections(collections.map(col => {
-            if (col.id === collectionId) {
-                const updatedList = col.wordList.filter(w => w.id !== wordId);
-                return { ...col, words: updatedList.length, wordList: updatedList };
+
+    const removeWord = (colId, wordId) => {
+        setCollections(prev => prev.map(c => {
+            if (c.id === colId) {
+                const newList = c.wordList.filter(w => w.id !== wordId);
+                return { ...c, words: newList.length, wordList: newList };
             }
-            return col;
+            return c;
         }));
     };
 
     return (
-        <AppContext.Provider value={{ user, setUser, collections, isDarkMode, toggleTheme, addCollection, addToCollection, removeCollection, addPoints, removeWord, updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })), setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })), recentCollectionId, updateWordStatus, updateWordData }}>
+        <AppContext.Provider value={{
+            user, setUser, collections, isDarkMode, toggleTheme,
+            addCollection, addToCollection, removeCollection, addPoints, removeWord, updateWordStatus, updateWordData,
+            updateDailyGoal: goal => setUser(p => ({ ...p, dailyChallenge: { ...p.dailyChallenge, total: goal } })),
+            setTutorialSeen: () => setUser(p => ({ ...p, tutorialSeen: true })),
+            recentCollectionId,
+            currentUser, loginWithGoogle, logout
+        }}>
             <SoundProvider>
                 {children}
             </SoundProvider>
@@ -1480,7 +1564,7 @@ const LearnPage = ({ initialFolderId }) => {
 };
 
 const MenuPage = () => {
-    const { user, setUser, isDarkMode, toggleTheme } = useApp();
+    const { user, setUser, isDarkMode, toggleTheme, currentUser, loginWithGoogle, logout } = useApp();
     const { addToast } = useToast();
 
     const handleShare = () => {
@@ -1500,14 +1584,29 @@ const MenuPage = () => {
             <h2 className="text-3xl font-bold tracking-tight">Menu</h2>
 
             <Card className="p-6 flex items-center gap-4 shadow-sm border-border">
-                <div className="h-16 w-16 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center text-xl font-bold">
-                    {user.name.substring(0, 2).toUpperCase()}
-                </div>
+                {currentUser ? (
+                    <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-primary">
+                        <img src={currentUser.photoURL} alt="User" className="w-full h-full object-cover" />
+                    </div>
+                ) : (
+                    <div className="h-16 w-16 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center text-xl font-bold">
+                        {user.name.substring(0, 2).toUpperCase()}
+                    </div>
+                )}
                 <div>
                     <h3 className="text-xl font-bold">{user.name}</h3>
-                    <div className="text-sm text-yellow-600 font-medium bg-yellow-100 px-2 py-0.5 rounded-full inline-block mt-1">Premium User</div>
+                    <div className="text-sm text-yellow-600 font-medium bg-yellow-100 px-2 py-0.5 rounded-full inline-block mt-1">
+                        {currentUser ? "Bulutli Hisob" : "Mehmon Rejimi"}
+                    </div>
                 </div>
             </Card>
+
+            {!currentUser && (
+                <Button onClick={loginWithGoogle} className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                    <div className="h-5 w-5 bg-white rounded-full p-0.5"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" /></div>
+                    Google bilan kirish
+                </Button>
+            )}
 
             <div className="space-y-3">
                 <h3 className="font-semibold text-lg ml-1">Yutuqlar</h3>
@@ -1545,12 +1644,21 @@ const MenuPage = () => {
                 </div>
             </Card>
 
-            <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer" onClick={() => { localStorage.clear(); window.location.reload(); }}>
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
-                    <span className="font-medium text-red-600">Ma'lumotlarni o'chirish</span>
-                </div>
-            </Card>
+            {currentUser ? (
+                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer" onClick={logout}>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
+                        <span className="font-medium text-red-600">Tizimdan chiqish</span>
+                    </div>
+                </Card>
+            ) : (
+                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer" onClick={() => { localStorage.clear(); window.location.reload(); }}>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
+                        <span className="font-medium text-red-600">Ma'lumotlarni o'chirish (Local)</span>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };
@@ -1567,7 +1675,7 @@ const LeaderboardPage = () => {
 };
 
 const HomePage = ({ onNavigate }) => {
-    const { user, addCollection, removeCollection, collections } = useApp();
+    const { user, addCollection, removeCollection, collections, currentUser, loginWithGoogle } = useApp();
     const { addToast } = useToast();
     const [isAdding, setIsAdding] = useState(false);
     const [folderName, setFolderName] = useState("");
@@ -1597,7 +1705,11 @@ const HomePage = ({ onNavigate }) => {
 
     return (
         <div className="mx-auto max-w-md space-y-6 p-4 pb-32">
-            <div className="flex items-center justify-between"><div><h1 className="text-xl font-bold">Xush kelibsiz!</h1><p className="text-xs text-muted-foreground">{user.name}</p></div></div>
+            <div className="flex items-center justify-between">
+                <div><h1 className="text-xl font-bold">Xush kelibsiz!</h1><p className="text-xs text-muted-foreground">{user.name}</p></div>
+                {!currentUser && <Button size="sm" variant="outline" onClick={loginWithGoogle} className="gap-2"><User className="h-4 w-4" /> Kirish</Button>}
+                {currentUser && <div className="h-9 w-9 rounded-full bg-primary/10 overflow-hidden border"><img src={currentUser.photoURL} alt="User" className="w-full h-full object-cover" /></div>}
+            </div>
             <Card className="p-5 border-0 bg-primary text-primary-foreground shadow-lg"><div className="flex justify-between mb-2"><span className="text-sm font-medium opacity-90">Kunlik maqsad</span><span className="font-bold">{user.dailyChallenge.completed}/{user.dailyChallenge.total}</span></div><Progress value={(user.dailyChallenge.completed / user.dailyChallenge.total) * 100} className="h-2 bg-primary-foreground/20" /></Card>
             <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Papkalaringiz</h3><Button onClick={() => setIsAdding(true)} variant="ghost" size="sm" className="gap-1 text-primary"><Plus className="h-4 w-4" /> Yangi</Button></div>
             {isAdding && (
