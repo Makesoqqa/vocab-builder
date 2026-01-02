@@ -460,7 +460,8 @@ export const AppProvider = ({ children }) => {
             user, setUser, collections, addCollection, addToCollection, removeCollection,
             updateWordStatus, updateWordData, addPoints, removeWord,
             isDarkMode, toggleTheme, recentCollectionId, setRecentCollectionId,
-            currentUser, loginWithGoogle, logout, isSyncing, isTelegram
+            currentUser, loginWithGoogle, logout, isSyncing, isTelegram,
+            setTutorialSeen: () => setUser(prev => ({ ...prev, tutorialSeen: true }))
         }}>
             <div className={isDarkMode ? 'dark' : ''}>
                 <div className="bg-background text-foreground min-h-screen transition-colors duration-300">
