@@ -1856,7 +1856,7 @@ const HomePage = ({ onNavigate }) => {
                     <div key={col.id} className="relative group">
                         <Card onClick={() => { setSelectedFolderId(col.id); setView('detail'); }} className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]">
                             <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-2xl ${col.color}`}>{col.icon}</div>
-                            <div className="flex-1 space-y-1"><div className="flex justify-between items-center"><h4 className="font-semibold">{col.title}</h4><span className="text-xs font-medium text-muted-foreground">{col.progress}%</span></div><Progress value={col.progress} className="h-1" /></div>
+                            <div className="flex-1 space-y-1"><div className="flex justify-between items-center"><h4 className="font-semibold">{col.title}</h4><span className="text-xs font-medium text-muted-foreground">{col.wordList?.length || 0} ta so'z</span></div><Progress value={col.progress} className="h-1" /></div>
                         </Card>
                         <button onClick={(e) => { e.stopPropagation(); removeCollection(col.id); }} className="absolute -right-2 -top-2 hidden group-hover:flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-white shadow-md"><X className="h-3 w-3" /></button>
                     </div>
