@@ -293,7 +293,7 @@ export const AppProvider = ({ children }) => {
                 if (data.collections && JSON.stringify(data.collections) !== JSON.stringify(collections)) {
                     console.log("Cloud update received");
                     setCollections(data.collections);
-                    addToast("Ma'lumotlar yangilandi (Cloud)", 'info');
+                    // addToast("Ma'lumotlar yangilandi (Cloud)", 'info'); // Disabled by user request
                 }
                 // User points/achievements sync
                 if (data.user && data.user.points !== user.points) {
@@ -1437,9 +1437,11 @@ const WritingPracticePage = ({ words, onBack }) => {
     const { addPoints } = useApp();
     const playSound = useSound();
     const [queue, setQueue] = useState(words.sort(() => 0.5 - Math.random()).slice(0, 10));
+    const [mistakes, setMistakes] = useState([]);
     const [index, setIndex] = useState(0);
     const [input, setInput] = useState("");
     const [status, setStatus] = useState('idle'); // idle, correct, wrong
+    const [isFinished, setIsFinished] = useState(false);
 
     const currentWord = queue[index];
 
@@ -1455,21 +1457,62 @@ const WritingPracticePage = ({ words, onBack }) => {
                     setInput("");
                     setStatus('idle');
                 } else {
-                    addToast("Mashq tugadi!", 'success');
-                    onBack();
+                    setIsFinished(true);
+                    playSound && playSound('success');
                 }
             }, 1000);
         } else {
             setStatus('wrong');
             addToast("Xato, qayta urinib ko'ring", 'error');
             playSound && playSound('error');
+            if (!mistakes.some(w => w.id === currentWord.id)) {
+                setMistakes(prev => [...prev, currentWord]);
+            }
         }
     };
+
+    const handleRetryMistakes = () => {
+        setQueue(mistakes);
+        setMistakes([]);
+        setIndex(0);
+        setInput("");
+        setStatus('idle');
+        setIsFinished(false);
+    };
+
+    if (isFinished) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
+                <div className="text-center space-y-6 max-w-sm w-full">
+                    <div className="h-24 w-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Trophy className="h-12 w-12 text-green-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold">Mashq Tugadi!</h2>
+                    <p className="text-muted-foreground text-lg">
+                        {mistakes.length === 0
+                            ? "Ajoyib! Hamma javoblar to'g'ri."
+                            : `${mistakes.length} ta xato aniqlandi.`}
+                    </p>
+
+                    <div className="grid gap-3 pt-4">
+                        {mistakes.length > 0 && (
+                            <Button onClick={handleRetryMistakes} size="lg" className="w-full bg-orange-500 hover:bg-orange-600 text-white gap-2">
+                                <RotateCcw className="h-5 w-5" /> Xatolarni qayta ishlash
+                            </Button>
+                        )}
+                        <Button onClick={onBack} variant={mistakes.length > 0 ? "outline" : "default"} size="lg" className="w-full">
+                            Chiqish
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!currentWord) return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto" /></div>;
 
     return (
-        <div className="fixed inset-0 z-[60] bg-background p-6 h-full min-h-[100dvh] flex flex-col max-w-md mx-auto overscroll-none">
+        <div className="fixed inset-0 z-[100] bg-background p-6 h-full min-h-[100dvh] flex flex-col max-w-md mx-auto overscroll-none">
             <Button variant="ghost" onClick={onBack} className="self-start mb-4 pl-0"><ArrowLeft className="mr-2 h-5 w-5" /> Chiqish</Button>
 
             <div className="flex-1 space-y-8">
@@ -1485,6 +1528,7 @@ const WritingPracticePage = ({ words, onBack }) => {
                         onChange={e => setInput(e.target.value)}
                         className={`h-14 text-center text-xl ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-700' : status === 'wrong' ? 'border-red-500 bg-red-50' : ''}`}
                         placeholder="Inglizcha..."
+                        autoFocus
                     />
                     <Button size="lg" className="w-full h-14 text-lg" onClick={handleCheck} disabled={status === 'correct'}>
                         {status === 'correct' ? <Check className="h-6 w-6" /> : "Tekshirish"}
