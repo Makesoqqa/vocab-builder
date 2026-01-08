@@ -230,6 +230,30 @@ export const AppProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null); // Firebase User
     const [isSyncing, setIsSyncing] = useState(true); // Start as syncing to check auth
     const { addToast } = useToast();
+    // Helper: Load User Data from Cloud or Init
+    const loadUserData = async (uid, defaultDisplayName) => {
+        setIsSyncing(true);
+        const docRef = doc(db, "users", uid);
+        try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.user) setUser(curr => ({ ...curr, ...data.user, name: data.user.name || defaultDisplayName }));
+                if (data.collections) setCollections(data.collections);
+                console.log("Data loaded for:", uid);
+            } else {
+                // New Cloud User: Save current local state to cloud immediately
+                // Only if local state has meaningful data, otherwise basic init
+                const payload = { user: { ...user, name: defaultDisplayName }, collections };
+                await setDoc(docRef, payload);
+                console.log("New user initialized:", uid);
+            }
+        } catch (err) {
+            console.error("Load Data Error:", err);
+            // Fallback to local if offline?
+        }
+        setIsSyncing(false);
+    };
 
     // 1. Auth & Initial Load
     useEffect(() => {
@@ -237,31 +261,20 @@ export const AppProvider = ({ children }) => {
             if (firebaseUser) {
                 console.log("Logged in:", firebaseUser.email);
                 setCurrentUser(firebaseUser);
-                setIsSyncing(true);
-
-                // Load from Cloud (Initial Fetch)
-                const docRef = doc(db, "users", firebaseUser.uid);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.user) setUser(curr => ({ ...curr, ...data.user, name: data.user.name || firebaseUser.displayName }));
-                    if (data.collections) setCollections(data.collections);
-                } else {
-                    // New Cloud User: Save current local state to cloud immediately
-                    await setDoc(docRef, { user, collections });
-                }
-                setIsSyncing(false);
+                loadUserData(firebaseUser.uid, firebaseUser.displayName);
             } else {
                 console.log("Logged out");
-                setCurrentUser(null);
-                // Load LocalStorage if not logged in
-                const savedUser = localStorage.getItem('vb_user');
-                const savedCol = localStorage.getItem('vb_collections');
-                if (savedUser) setUser(JSON.parse(savedUser));
-                else setUser(initialUser);
-                if (savedCol) setCollections(JSON.parse(savedCol));
-                setIsSyncing(false);
+                // ONLY clear if NOT using Telegram Auth (Virtual)
+                if (!window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                    setCurrentUser(null);
+                    // Load LocalStorage if not logged in
+                    const savedUser = localStorage.getItem('vb_user');
+                    const savedCol = localStorage.getItem('vb_collections');
+                    if (savedUser) setUser(JSON.parse(savedUser));
+                    else setUser(initialUser);
+                    if (savedCol) setCollections(JSON.parse(savedCol));
+                    setIsSyncing(false);
+                }
             }
         });
         return () => unsubscribe();
@@ -358,7 +371,7 @@ export const AppProvider = ({ children }) => {
 
                     console.log("Auto-logging in with Telegram ID:", virtualUid);
                     setCurrentUser(virtualUser);
-                    setIsSyncing(true); // Trigger Firestore sync
+                    loadUserData(virtualUid, virtualUser.displayName);
 
                     // Also update local User state display name immediately
                     setUser(prev => ({ ...prev, name: virtualUser.displayName }));
