@@ -293,6 +293,7 @@ export const AppProvider = ({ children }) => {
                 if (data.collections && JSON.stringify(data.collections) !== JSON.stringify(collections)) {
                     console.log("Cloud update received");
                     setCollections(data.collections);
+                    addToast("Ma'lumotlar yangilandi (Cloud)", 'info');
                 }
                 // User points/achievements sync
                 if (data.user && data.user.points !== user.points) {
@@ -317,6 +318,7 @@ export const AppProvider = ({ children }) => {
             console.log("Sync Complete");
         } catch (e) {
             console.error("Sync Error:", e);
+            addToast(`Sync Xatosi: ${e.message}`, 'error');
         }
     };
 
