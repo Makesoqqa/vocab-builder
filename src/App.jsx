@@ -306,19 +306,23 @@ export const AppProvider = ({ children }) => {
     // BUT we need to push local changes. See #3.
 
     // 3. Local -> Cloud Sync (Push)
+    const forceSync = async () => {
+        if (!currentUser) return;
+        try {
+            console.log("Forcing Sync...");
+            await setDoc(doc(db, "users", currentUser.uid), {
+                user: { ...user, name: currentUser.displayName || user.name },
+                collections
+            }, { merge: true });
+            console.log("Sync Complete");
+        } catch (e) {
+            console.error("Sync Error:", e);
+        }
+    };
+
     useEffect(() => {
         if (currentUser && !isSyncing) {
-            const saveData = async () => {
-                try {
-                    await setDoc(doc(db, "users", currentUser.uid), {
-                        user: { ...user, name: currentUser.displayName || user.name },
-                        collections
-                    }, { merge: true });
-                } catch (e) {
-                    console.error("Sync Error:", e);
-                }
-            };
-            const timeout = setTimeout(saveData, 2000); // 2s debounce
+            const timeout = setTimeout(forceSync, 1000); // Reduced to 1000ms
             return () => clearTimeout(timeout);
         }
 
@@ -328,6 +332,8 @@ export const AppProvider = ({ children }) => {
         if (recentCollectionId) localStorage.setItem('vb_recent', recentCollectionId);
 
     }, [user, collections, currentUser, isSyncing, recentCollectionId]);
+
+
 
     const [isTelegram, setIsTelegram] = useState(false);
 
@@ -494,7 +500,7 @@ export const AppProvider = ({ children }) => {
             user, setUser, collections, addCollection, addToCollection, removeCollection,
             updateWordStatus, updateWordData, addPoints, removeWord,
             isDarkMode, toggleTheme, recentCollectionId, setRecentCollectionId,
-            currentUser, loginWithGoogle, logout, isSyncing, isTelegram,
+            currentUser, loginWithGoogle, logout, isSyncing, isTelegram, forceSync,
             setTutorialSeen: async () => {
                 const updatedUser = { ...user, tutorialSeen: true };
                 setUser(updatedUser);
@@ -584,7 +590,7 @@ const Onboarding = ({ onFinish }) => {
 
 // --- Scanners ---
 const HighlightedScanner = ({ onBack }) => {
-    const { collections, addToCollection } = useApp();
+    const { collections, addToCollection, forceSync } = useApp();
     const { addToast } = useToast();
     const [image, setImage] = useState(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -625,6 +631,7 @@ const HighlightedScanner = ({ onBack }) => {
         if (!targetCollection) { addToast("Saqlash uchun papka tanlang", 'error'); return; }
         addToCollection(parseInt(targetCollection), scannedWords);
         addToast("So'zlar saqlandi!", 'success');
+        forceSync(); // Immediate Sync
         onBack();
     };
 
@@ -687,7 +694,7 @@ const HighlightedScanner = ({ onBack }) => {
 };
 
 const SelectionScanner = ({ onBack }) => {
-    const { collections, addToCollection } = useApp();
+    const { collections, addToCollection, forceSync } = useApp();
     const { addToast } = useToast();
     const [image, setImage] = useState(null);
     const [detectedWords, setDetectedWords] = useState([]); // Array of { id, word, box_2d }
@@ -802,6 +809,7 @@ const SelectionScanner = ({ onBack }) => {
 
         addToCollection(parseInt(targetCollection) || collections[0].id, newWords);
         addToast(`${newWords.length} ta so'z saqlandi!`, 'success');
+        forceSync(); // Immediate Sync
         onBack();
     };
 
