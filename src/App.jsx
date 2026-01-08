@@ -341,8 +341,27 @@ export const AppProvider = ({ children }) => {
                 if (tg.setBackgroundColor) tg.setBackgroundColor(isDarkMode ? '#0f172a' : '#ffffff');
 
                 // User Name Sync (if not logged in via Firebase)
-                if (tg.initDataUnsafe?.user && !currentUser) {
-                    setUser(prev => ({ ...prev, name: tg.initDataUnsafe.user.first_name }));
+                if (tg.initDataUnsafe?.user) {
+                    const tgUser = tg.initDataUnsafe.user;
+                    // AUTO-LOGIN Logic for Telegram Sync
+                    // We use "tg_" + user_id as a unique key for Firestore.
+                    const virtualUid = `tg_${tgUser.id}`;
+
+                    // Mock a Firebase-like User Object
+                    const virtualUser = {
+                        uid: virtualUid,
+                        email: null,
+                        displayName: `${tgUser.first_name} ${tgUser.last_name || ''}`.trim(),
+                        photoURL: tgUser.photo_url || null,
+                        isAnonymous: false
+                    };
+
+                    console.log("Auto-logging in with Telegram ID:", virtualUid);
+                    setCurrentUser(virtualUser);
+                    setIsSyncing(true); // Trigger Firestore sync
+
+                    // Also update local User state display name immediately
+                    setUser(prev => ({ ...prev, name: virtualUser.displayName }));
                 }
 
                 // Theme Sync
@@ -352,19 +371,15 @@ export const AppProvider = ({ children }) => {
                 console.warn("Telegram WebApp API Error:", e);
             }
         }
-    }, [isDarkMode, currentUser]);
+    }, [isDarkMode]); // depend only on darkmode to avoid re-triggering loop
 
     const loginWithGoogle = async () => {
         try {
             // Check if running in Telegram WebView
             if (isTelegram && window.Telegram?.WebApp) {
-                addToast("Telegramda Google kirish cheklangan.", 'error');
-                addToast("Ilova tashqi brauzerda ochilmoqda...", 'info');
-                setTimeout(() => {
-                    // Open the Current App URL in External Browser (Chrome/Safari)
-                    // This allows valid Google Login and Data Sync.
-                    window.Telegram.WebApp.openLink(window.location.href);
-                }, 1500);
+                // If we are here, it means auto-login failed or user wants to switch?
+                // But usually we hide the button.
+                addToast("Telegramda avtomatik hisob ishlaydi.", 'info');
                 return;
             }
 
