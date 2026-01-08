@@ -368,7 +368,10 @@ export const AppProvider = ({ children }) => {
                 return;
             }
 
-            addToast("Xush kelibsiz!", 'success');
+            // For regular browsers (Desktop/Mobile Web)
+            console.log("Starting Google Popup Login...");
+            await signInWithPopup(auth, googleProvider);
+            if (addToast) addToast("Xush kelibsiz!", 'success');
         } catch (error) {
             console.error("Auth Error:", error);
             // Show explicit error for debugging
