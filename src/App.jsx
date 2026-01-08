@@ -367,11 +367,18 @@ export const AppProvider = ({ children }) => {
                 return;
             }
 
-            // For regular browsers (Desktop/Mobile Web)
-            await signInWithPopup(auth, googleProvider);
             addToast("Xush kelibsiz!", 'success');
         } catch (error) {
-            console.error(error);
+            console.error("Auth Error:", error);
+            // Show explicit error for debugging
+            if (error.code === 'auth/unauthorized-domain') {
+                window.alert(`DOMAIN XATOSI: Ushbu domen (${window.location.hostname}) Firebase da ruxsat berilmagan. Iltimos, Firebase Console -> Authentication -> Settings -> Authorized Domains ga qo'shing.`);
+            } else if (error.code === 'auth/operation-not-allowed') {
+                window.alert("GOOGLE LOGIN XATOSI: Firebase da Google Sign-In yoqilmagan. Console'da 'Sign-in method' bo'limini tekshiring.");
+            } else {
+                window.alert(`LOGIN XATOSI: ${error.code} - ${error.message}`);
+            }
+
             if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                 // Fallback to redirect if popup fails/blocked
                 try { await signInWithRedirect(auth, googleProvider); } catch (e) { }
