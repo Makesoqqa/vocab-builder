@@ -1249,7 +1249,7 @@ const FlashcardsPage = ({ words, collectionId, onBack, onSwitchGame }) => {
     const rotate = dragX * 0.05;
 
     return (
-        <div className="mx-auto max-w-md space-y-6 p-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden">
+        <div className="mx-auto max-w-md space-y-6 pt-16 pb-6 px-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex justify-between items-center px-2">
                 <Button variant="ghost" onClick={onBack} className="pl-0 gap-2 hover:bg-transparent hover:text-primary transition-colors"><ArrowLeft className="h-6 w-6" /> <span className="text-lg">Orqaga</span></Button>
@@ -1257,7 +1257,7 @@ const FlashcardsPage = ({ words, collectionId, onBack, onSwitchGame }) => {
             </div>
 
             {/* Card Container */}
-            <div className="flex-1 relative perspective-1000 select-none pb-4"
+            <div className="flex-1 relative perspective-1000 select-none pb-4 touch-none"
                 onMouseDown={handlePointerDown} onMouseMove={handlePointerMove} onMouseUp={handlePointerUp} onMouseLeave={() => isDragging && handlePointerUp()}
                 onTouchStart={handlePointerDown} onTouchMove={handlePointerMove} onTouchEnd={handlePointerUp}
             >
@@ -1567,13 +1567,13 @@ const FolderDetail = ({ folderId, onBack, onNavigate }) => {
         setIsAnalyzing(true);
         try {
             // Robust prompt for parsing AND translating
-            const prompt = `Act as a dictionary data parser. 
+            const prompt = `Act as a dictionary data parser.
             Step 1: Extract English words/phrases from the text. Ignore numbers/bullets (a, b, 1. etc).
             Step 2: If the text already has a translation, use it. IF NOT, TRANSLATE the English word to UZBEK yourself.
-            
+
             Return ONLY a raw JSON array of objects:
             [{"word": "english_word", "translation": "uzbek_translation"}]
-            
+
             Text to parse and translate:
             ${bulkText}`;
 
@@ -1740,7 +1740,7 @@ const MenuPage = () => {
     };
 
     return (
-        <div className="p-4 space-y-6 pb-32 animate-fade-in">
+        <div className="px-4 pt-16 space-y-6 pb-32 animate-fade-in">
             <h2 className="text-3xl font-bold tracking-tight">Menu</h2>
 
             <Card className="p-6 flex items-center gap-4 shadow-sm border-border">
