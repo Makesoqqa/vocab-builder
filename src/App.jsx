@@ -355,11 +355,29 @@ export const AppProvider = ({ children }) => {
 
     const loginWithGoogle = async () => {
         try {
-            await signInWithRedirect(auth, googleProvider);
+            // Check if running in Telegram WebView
+            if (isTelegram && window.Telegram?.WebApp) {
+                addToast("Telegramda Google kirish cheklangan.", 'error');
+                addToast("Ilova tashqi brauzerda ochilmoqda...", 'info');
+                setTimeout(() => {
+                    // Open the Current App URL in External Browser (Chrome/Safari)
+                    // This allows valid Google Login and Data Sync.
+                    window.Telegram.WebApp.openLink(window.location.href);
+                }, 1500);
+                return;
+            }
+
+            // For regular browsers (Desktop/Mobile Web)
+            await signInWithPopup(auth, googleProvider);
             addToast("Xush kelibsiz!", 'success');
         } catch (error) {
             console.error(error);
-            addToast(`Kirishda xatolik: ${error.message}`, 'error');
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+                // Fallback to redirect if popup fails/blocked
+                try { await signInWithRedirect(auth, googleProvider); } catch (e) { }
+            } else {
+                addToast(`Kirishda xatolik: ${error.message}`, 'error');
+            }
         }
     };
 
