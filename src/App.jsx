@@ -437,7 +437,19 @@ export const AppProvider = ({ children }) => {
             user, setUser, collections, addCollection, addToCollection, removeCollection,
             updateWordStatus, updateWordData, addPoints, removeWord,
             isDarkMode, toggleTheme, recentCollectionId, setRecentCollectionId,
-            currentUser, loginWithGoogle, logout, isSyncing, isTelegram
+            currentUser, loginWithGoogle, logout, isSyncing, isTelegram,
+            setTutorialSeen: async () => {
+                const updatedUser = { ...user, tutorialSeen: true };
+                setUser(updatedUser);
+                if (currentUser) {
+                    try {
+                        await setDoc(doc(db, "users", currentUser.uid), { user: updatedUser }, { merge: true });
+                        console.log("Tutorial seen saved to Cloud");
+                    } catch (e) { console.error("Error saving tutorial seen:", e); }
+                } else {
+                    localStorage.setItem('vb_user', JSON.stringify(updatedUser));
+                }
+            }
         }}>
             <div className={isDarkMode ? 'dark' : ''}>
                 <div className="bg-background text-foreground min-h-screen transition-colors duration-300">
