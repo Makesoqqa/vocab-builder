@@ -1761,12 +1761,7 @@ const MenuPage = () => {
                 </div>
             </Card>
 
-            {!currentUser && (
-                <Button onClick={loginWithGoogle} className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-                    <div className="h-5 w-5 bg-white rounded-full p-0.5"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" /></div>
-                    Google bilan kirish
-                </Button>
-            )}
+
 
             <div className="space-y-3">
                 <h3 className="font-semibold text-lg ml-1">Yutuqlar</h3>
@@ -1812,7 +1807,13 @@ const MenuPage = () => {
                     </div>
                 </Card>
             ) : (
-                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer" onClick={() => { localStorage.clear(); window.location.reload(); }}>
+                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer"
+                    onClick={() => {
+                        if (window.confirm("Barcha ma'lumotlar o'chib ketadi. Rostdan ham o'chirmoqchimisiz?")) {
+                            localStorage.clear();
+                            window.location.reload();
+                        }
+                    }}>
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
                         <span className="font-medium text-red-600">Ma'lumotlarni o'chirish (Local)</span>
@@ -1918,8 +1919,8 @@ const MainContent = ({ activeTab, setActiveTab }) => {
     return (
         <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             {!user.tutorialSeen && <Onboarding onFinish={setTutorialSeen} />}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
+            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-2xl pt-8 pb-4 transition-all duration-300">
+                <div className="mx-auto flex items-center justify-between px-4 max-w-md">
                     <div><h1 className="text-xl font-bold tracking-tight">Vocab Builder</h1></div>
                     <StreakBadge />
                 </div>
