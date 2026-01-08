@@ -1526,7 +1526,12 @@ const WritingPracticePage = ({ words, onBack }) => {
                     <Input
                         value={input}
                         onChange={e => setInput(e.target.value)}
-                        className={`h-14 text-center text-xl ${status === 'correct' ? 'border-green-500 bg-green-50 text-green-700' : status === 'wrong' ? 'border-red-500 bg-red-50' : ''}`}
+                        className={`h-14 text-center text-xl transition-all duration-300 relative z-[101] 
+                            ${status === 'correct'
+                                ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-100 dark:border-green-500'
+                                : status === 'wrong'
+                                    ? 'border-red-500 bg-red-50 text-red-900 dark:bg-red-900/40 dark:text-red-100 dark:border-red-500'
+                                    : 'bg-background text-foreground'}`}
                         placeholder="Inglizcha..."
                         autoFocus
                     />
@@ -1905,15 +1910,25 @@ const HomePage = ({ onNavigate }) => {
 const MainContent = ({ activeTab, setActiveTab }) => {
     const { user, setTutorialSeen, isTelegram } = useApp();
     const [navData, setNavData] = useState(null);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+    useEffect(() => {
+        const handleFocus = (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setIsKeyboardOpen(true); };
+        const handleBlur = (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setIsKeyboardOpen(false); };
+        window.addEventListener('focusin', handleFocus);
+        window.addEventListener('focusout', handleBlur);
+        return () => { window.removeEventListener('focusin', handleFocus); window.removeEventListener('focusout', handleBlur); };
+    }, []);
+
     const handleNavigate = (tab, data) => { setActiveTab(tab); setNavData(data); };
 
     return (
         <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             {!user.tutorialSeen && <Onboarding onFinish={setTutorialSeen} />}
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-2xl pt-14 pb-4 transition-all duration-300">
-                <div className="mx-auto flex items-center justify-between px-4 max-w-md">
-                    <div><h1 className="text-xl font-bold tracking-tight">Vocab Builder</h1></div>
-                    <StreakBadge />
+                <div className="mx-auto flex items-center justify-center relative px-4 max-w-md">
+                    <div className="absolute left-4"><StreakBadge /></div>
+                    <h1 className="text-xl font-bold tracking-tight text-center">Vocab Builder</h1>
                 </div>
             </header>
             <main className="pb-24">
@@ -1923,21 +1938,23 @@ const MainContent = ({ activeTab, setActiveTab }) => {
                 {activeTab === "leaderboard" && <LeaderboardPage />}
                 {activeTab === "menu" && <MenuPage />}
             </main>
-            <nav className="fixed bottom-6 left-0 right-0 z-50 px-4">
-                <div className="mx-auto max-w-md relative flex items-center justify-center">
-                    <div className="flex w-full items-center justify-around rounded-full bg-[#212529]/90 backdrop-blur-md px-4 py-3 shadow-2xl border border-white/10">
-                        {['home', 'learn', 'scan', 'leaderboard', 'menu'].map(t => (
-                            <button key={t} onClick={() => { setActiveTab(t); setNavData(null); }} className={cn("p-2 rounded-full transition-all", activeTab === t ? "text-white bg-white/20" : "text-gray-400 hover:text-white", t === 'scan' && "bg-blue-600 text-white shadow-lg shadow-blue-500/40 p-3 hover:bg-blue-500 scale-110 -translate-y-1 mx-2")}>
-                                {t === 'home' && <AnimatedHome isActive={activeTab === 'home'} className="h-6 w-6" />}
-                                {t === 'learn' && <AnimatedGraduationCap isActive={activeTab === 'learn'} className="h-6 w-6" />}
-                                {t === 'scan' && <Scan className="h-6 w-6" />}
-                                {t === 'leaderboard' && <AnimatedTrophy isActive={activeTab === 'leaderboard'} className="h-6 w-6" />}
-                                {t === 'menu' && <AnimatedMenu isActive={activeTab === 'menu'} className="h-6 w-6" />}
-                            </button>
-                        ))}
+            {!isKeyboardOpen && (
+                <nav className="fixed bottom-6 left-0 right-0 z-50 px-4 animate-fade-in-up">
+                    <div className="mx-auto max-w-md relative flex items-center justify-center">
+                        <div className="flex w-full items-center justify-around rounded-full bg-[#212529]/90 backdrop-blur-md px-4 py-3 shadow-2xl border border-white/10">
+                            {['home', 'learn', 'scan', 'leaderboard', 'menu'].map(t => (
+                                <button key={t} onClick={() => { setActiveTab(t); setNavData(null); }} className={cn("p-2 rounded-full transition-all", activeTab === t ? "text-white bg-white/20" : "text-gray-400 hover:text-white", t === 'scan' && "bg-blue-600 text-white shadow-lg shadow-blue-500/40 p-3 hover:bg-blue-500 scale-110 -translate-y-1 mx-2")}>
+                                    {t === 'home' && <AnimatedHome isActive={activeTab === 'home'} className="h-6 w-6" />}
+                                    {t === 'learn' && <AnimatedGraduationCap isActive={activeTab === 'learn'} className="h-6 w-6" />}
+                                    {t === 'scan' && <Scan className="h-6 w-6" />}
+                                    {t === 'leaderboard' && <AnimatedTrophy isActive={activeTab === 'leaderboard'} className="h-6 w-6" />}
+                                    {t === 'menu' && <AnimatedMenu isActive={activeTab === 'menu'} className="h-6 w-6" />}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </nav>
+                </nav>
+            )}
         </div>
     );
 };
