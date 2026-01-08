@@ -1678,7 +1678,7 @@ const LearnPage = ({ initialFolderId }) => {
 };
 
 const MenuPage = () => {
-    const { user, setUser, isDarkMode, toggleTheme, currentUser, loginWithGoogle, logout } = useApp();
+    const { user, setUser, isDarkMode, toggleTheme, currentUser, loginWithGoogle, logout, forceSync, isTelegram } = useApp();
     const { addToast } = useToast();
 
     const handleShare = () => {
@@ -1773,6 +1773,23 @@ const MenuPage = () => {
                     </div>
                 </Card>
             )}
+
+            {/* DEBUG SECTION */}
+            <Card className="p-4 border border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-900/30">
+                <h4 className="font-bold text-xs uppercase text-blue-600 mb-2">Debug Info (v1.2)</h4>
+                <div className="space-y-1 text-xs font-mono text-muted-foreground break-all">
+                    <div>UID: {currentUser?.uid || "Not Logged In"}</div>
+                    <div>Env: {isTelegram ? "Telegram" : "Web/Browser"}</div>
+                    <div>Platform: {window.Telegram?.WebApp?.platform || "Unknown"}</div>
+                </div>
+                <Button onClick={async () => {
+                    addToast("Sync boshlanmoqda...", 'info');
+                    await forceSync();
+                    addToast("Sync tugadi (Tekshiring)", 'success');
+                }} size="sm" variant="outline" className="mt-3 w-full h-8 text-xs">
+                    Majburiy Sync (Force)
+                </Button>
+            </Card>
         </div>
     );
 };
