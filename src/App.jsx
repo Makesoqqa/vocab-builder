@@ -1494,13 +1494,13 @@ const WritingPracticePage = ({ words, onBack }) => {
                             : `${mistakes.length} ta xato aniqlandi.`}
                     </p>
 
-                    <div className="grid gap-3 pt-4">
+                    <div className="grid gap-4 pt-4">
                         {mistakes.length > 0 && (
-                            <Button onClick={handleRetryMistakes} size="lg" className="w-full bg-orange-500 hover:bg-orange-600 text-white gap-2">
-                                <RotateCcw className="h-5 w-5" /> Xatolarni qayta ishlash
+                            <Button onClick={handleRetryMistakes} className="w-full h-14 text-xl font-bold bg-orange-500 hover:bg-orange-600 text-white gap-2 shadow-lg active:scale-95 transition-all">
+                                <RotateCcw className="h-6 w-6" /> Xatolarni qayta ishlash
                             </Button>
                         )}
-                        <Button onClick={onBack} variant={mistakes.length > 0 ? "outline" : "default"} size="lg" className="w-full">
+                        <Button onClick={onBack} variant={mistakes.length > 0 ? "outline" : "default"} className="w-full h-14 text-xl font-bold border-2 active:scale-95 transition-all">
                             Chiqish
                         </Button>
                     </div>
@@ -1799,27 +1799,18 @@ const MenuPage = () => {
                 </div>
             </Card>
 
-            {currentUser ? (
-                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer" onClick={logout}>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
-                        <span className="font-medium text-red-600">Tizimdan chiqish</span>
-                    </div>
-                </Card>
-            ) : (
-                <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer"
-                    onClick={() => {
-                        if (window.confirm("Barcha ma'lumotlar o'chib ketadi. Rostdan ham o'chirmoqchimisiz?")) {
-                            localStorage.clear();
-                            window.location.reload();
-                        }
-                    }}>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
-                        <span className="font-medium text-red-600">Ma'lumotlarni o'chirish (Local)</span>
-                    </div>
-                </Card>
-            )}
+            <Card className="p-5 flex items-center justify-between border-red-100 hover:border-red-300 cursor-pointer"
+                onClick={() => {
+                    if (window.confirm("Barcha ma'lumotlar o'chib ketadi. Rostdan ham o'chirmoqchimisiz?")) {
+                        localStorage.clear();
+                        window.location.reload();
+                    }
+                }}>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 text-red-600 rounded-full"><Trash2 className="h-5 w-5" /></div>
+                    <span className="font-medium text-red-600">Ma'lumotlarni o'chirish (Local)</span>
+                </div>
+            </Card>
 
             {/* DEBUG SECTION */}
             <Card className="p-4 border border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-900/30">
@@ -1919,7 +1910,7 @@ const MainContent = ({ activeTab, setActiveTab }) => {
     return (
         <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             {!user.tutorialSeen && <Onboarding onFinish={setTutorialSeen} />}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-2xl pt-8 pb-4 transition-all duration-300">
+            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-2xl pt-14 pb-4 transition-all duration-300">
                 <div className="mx-auto flex items-center justify-between px-4 max-w-md">
                     <div><h1 className="text-xl font-bold tracking-tight">Vocab Builder</h1></div>
                     <StreakBadge />
