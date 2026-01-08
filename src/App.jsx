@@ -229,6 +229,7 @@ export const AppProvider = ({ children }) => {
     const [recentCollectionId, setRecentCollectionId] = useState(null);
     const [currentUser, setCurrentUser] = useState(null); // Firebase User
     const [isSyncing, setIsSyncing] = useState(true); // Start as syncing to check auth
+    const { addToast } = useToast();
 
     // 1. Auth & Initial Load
     useEffect(() => {
